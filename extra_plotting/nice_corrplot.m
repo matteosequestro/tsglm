@@ -1,5 +1,9 @@
 function f1 = nice_corrplot(x,y, xlab, ylab, titles)
 
+if ~exist("xlab", "var"); xlab = "x";end
+if ~exist("ylab", "var"); ylab = "y";end
+if ~exist("titles", "var"); titles= "";end
+
 if width(x) == 1 && width(y) == 1
     ccc     = round(concordance_correlation_coefficient(x,y), 2);           % Concordance Correlation Coefficient
     cc      = round(corr(x,y), 2);                                          % Simple pearson correlation

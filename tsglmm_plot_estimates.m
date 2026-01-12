@@ -75,7 +75,7 @@ for par = 1 : npar
     for this_cluster = 1 : height(this_par_clusters)
         hold on
         clFirst = this_par_clusters.first(this_cluster);
-        clLength = this_par_clusters.length(this_cluster);
+        clLength = this_par_clusters.length(this_cluster)-1;
         ylims = get(gca, 'Ylim');
         if this_par_clusters.prob(this_cluster) >= modelout.alpha
             if cfg.plot_non_significant_clusters
