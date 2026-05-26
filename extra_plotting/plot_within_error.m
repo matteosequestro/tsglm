@@ -1,4 +1,4 @@
-function plot_within_error(fin, errortype, colors)
+function f1 = plot_within_error(fin, errortype, colors, legendlabs)
 
 
 
@@ -39,7 +39,9 @@ elseif strcmp(errortype, "ci")
 end
 
 % Plot each condition
-figure
+if nargout ~= 0
+    f1 = figure;
+end
 time = 1:width(fin.mean_series);
 for rr = 1  : height(fin)
     % Define legend name for this condition
@@ -50,9 +52,9 @@ for rr = 1  : height(fin)
     dispname((end-2):end) = [];
 
     % Plot this condition
-    if wantpatch 
+    if wantpatch
         patch([time, fliplr(time)], [low_lim(rr,:), fliplr(up_lim(rr,:))], ...
-            colors_rgb{rr},'FaceAlpha',0.2, 'EdgeColor','none', 'HandleVisibility', 'off'); 
+            colors_rgb{rr},'FaceAlpha',0.2, 'EdgeColor','none', 'HandleVisibility', 'off');
     end
 
 
@@ -60,7 +62,12 @@ for rr = 1  : height(fin)
     plot(mean_line(rr,:), 'Color', colors_rgb{rr}, 'LineWidth', 1, 'DisplayName',dispname)
 end
 xlim([1, max(time)]);
-legend('Location', 'north')
+if nargin < 4
+    legend('Location', 'north')
+else
+    legend(legendlabs, 'Location', 'north')
+end
+
 box on
 
 

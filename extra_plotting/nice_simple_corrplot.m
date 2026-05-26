@@ -1,4 +1,4 @@
-function nice_simple_corrplot(x,y, xlab, ylab, tcolor) 
+function f1 = nice_simple_corrplot(x,y, xlab, ylab, tcolor) 
     
 % Set defaults
 if ~exist("xlab", 'var'); xlab = ""; end
@@ -14,7 +14,10 @@ xq = linspace(min(x), max(x), 100)'; % sorted x values for smooth line
 
 
 % figure;
-figure
+if nargout > 0
+    f1 = figure;
+end
+
 plot(xq, yhat, 'Color', tcolor, 'LineWidth', 2)
 hold on
 

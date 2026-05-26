@@ -1,10 +1,12 @@
-function f1 = tsglmm_plot_estimates(modelout, cfg, layout_dims)
+function f1 = tsglm_plot_estimates(modelout, cfg, layout_dims, to_cut)
 
 
-parnames = modelout.pars.parnames;
-tslen = size(modelout.pars.estimates, 2);
-npar = length(parnames);
-pars_series = modelout.full_ind_estimates;
+if nargin < 4; to_cut = []; end
+
+parnames = modelout.par_names;
+tslen = size(modelout.pars_series, 2);
+npar = size(modelout.pars_series, 3);
+pars_series = modelout.pars_series;
 obs_clusters_sum = modelout.obs_clusters_sum;
 % Remove the underscores from the parameter names otherwise it's ugly
 parnames_to_plot = cellfun(@(x) replace(x, '_', ' '), parnames, 'UniformOutput', false);
@@ -20,6 +22,7 @@ else
     nrows_tiles = layout_dims(1);
     ncols_tiles = layout_dims(2);
 end
+
 % Prepare the layout (keep it tight)
 f1              = figure;
 tld             = tiledlayout(nrows_tiles, ncols_tiles);
@@ -32,6 +35,7 @@ xlabel(tld, 'time (s)');
 
 % Plot each parameter
 for par = 1 : npar
+    if ismember(par, to_cut); continue; end
     nexttile
 
     % Compute stats to plot

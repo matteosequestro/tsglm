@@ -1,9 +1,9 @@
 
 
-function [modelout, clust_par_means, outputText, outputStats] = tsglmm_run_clustperm(data, formula, cfg)
+function [modelout, clust_par_means, outputText, outputStats] = tsglm_run_clustperm(data, formula, cfg, modelout)
 % ----------------------------------------------------------------------------------------------------------------------------------------------
-% Performs cluster based correction on parameter estimates from linear mixed
-% effect model on a time-series
+% Performs cluster based correction on parameter estimates from 
+% generalised linear model on a time-series
 %
 % INPUTS:
 % data                  : full dataset having at least a column for ID,
@@ -50,8 +50,6 @@ wantplot_perm                   = get_or_default(cfg, 'wantplot_perm', 1);
 modname                         = get_or_default(cfg, 'modname', "");               % just for plotting purposes, e.g., if you need model comparison
 fieldtrip_cfg                   = get_or_default(cfg, 'fieldtrip_cfg', struct()); 
 
-disp(fieldtrip_cfg)
-
 % Take time
 tic
 
@@ -75,28 +73,34 @@ fieldtrip_cfg.alpha             = get_or_default(fieldtrip_cfg, 'alpha',        
 fieldtrip_cfg.neighbours        = get_or_default(fieldtrip_cfg, 'neighbours',       []);               % no spatial neighbours since it's unidimensional
 fieldtrip_cfg.correcttail       = get_or_default(fieldtrip_cfg, 'correcttail',      'alpha');
 
-disp(fieldtrip_cfg)
 
 % Fit the model
-disp('_________________________________________________')
-disp(['fitting a ', change_text(glm_likelihood), ' model with the formula: ', formula '...'])
-[modelout]          = tsglmm_fit_model(data, formula, cfg);
-fprintf('fitting done in %.2fs!\n', round(toc,2));
+if nargin < 4
+    disp('_________________________________________________')
+    disp(['fitting a ', change_text(glm_likelihood), ' model with the formula: ', formula '...'])
+   
+    % fit the model on everyone
+    tic
+    modelout = tsglm_fit_all_subjs(data, formula, glm_likelihood, cfg);
+    fprintf('fitting done in %.2fs!\n', round(toc,2));
+    
+    % Extract some variables from the model and add them modelout
+    modelout.formula    = formula;
+    modelout.modname    = modname;
+    modelout.likelihood = glm_likelihood; 
+end
 
-% Extract some variables from the model and add them modelout
-npar                = height(modelout.pars.estimates); % number of parameters (a.k.a., coefficients)
-tslen               = width(modelout.pars.estimates); % length of the time-series
-parnames            = modelout.pars.parnames;
-modelout.formula    = formula;
-modelout.modname    = modname;
-modelout.likelihood = glm_likelihood;
+% add some info to modelout
+npar     = size(modelout.pars_series, 3); % number of parameters (a.k.a., coefficients)
+tslen    = size(modelout.pars_series, 2); % length of the time-series
+parnames = modelout.par_names;
 
 % Unpack individual parameter estimates
-pars_series = modelout.full_ind_estimates;
+pars_series = modelout.pars_series;
 
 % Run Fieldtrip cluster based permutationn
-n_subjs = height(pars_series);
-timevec = 1 : width(pars_series);
+n_subjs = size(pars_series, 1);
+timevec = 1 : size(pars_series, 2);
 
 % Design matrix for fieldtrip
 design(1,:) = repmat(1 : n_subjs, 1, 2);
@@ -198,15 +202,19 @@ end
 % Export observed cluster summary
 modelout.obs_clusters_sum = obs_clusters_sum;
 
-%% Plots
+% Plots
 if wantplot_perm
-    tsglmm_plot_estimates(modelout, cfg);
+    tsglm_plot_estimates(modelout, cfg);
 end 
 
-%% Compute mean parameter estimates for each individual and significant cluster
-% Do this only if it's required by the output to save time
-if nargout > 1
-    clust_par_means = tsglmm_clusters_parmeans(modelout); % the function could have a better name
+% Compute mean parameter estimates for each individual and significant cluster
+if nargout > 1 % Do this only if it's required by the output to save time
+    clust_par_means = tsglm_clusters_parmeans(modelout); % the function could have a better name
+end
+
+% Write stats if required
+if cfg.write_stats
+    tsglm_write_stats(modelout);
 end
 
 % Display total elapsed time

@@ -1,8 +1,8 @@
 %%% compute averages and within errors (se and ci) over time-series, then
 %%% plot them
 
-function [fin, exp_ind_means] = within_error(set, series, pID, conditions, ci_lims, want_plot, wantpatch, errortype, colors)
-%%% ----------------------------------------------------------------------------------------------------------------------------------------------
+function [fin, exp_ind_means, f1] = within_error(set, series, pID, conditions, ci_lims, want_plot, wantpatch, errortype, colors,legendlabs)
+%%% ========================================================================================================================
 %%% set         : full dataset having at least a column for ID, x columns for the condition(s) you want to average over, and one column with the time series in a cell. Each row is a trial
 %%% series      : the name of column with the time series
 %%% pID         : the nale of column with the IDs (or the clustering variable in general)
@@ -21,27 +21,25 @@ function [fin, exp_ind_means] = within_error(set, series, pID, conditions, ci_li
 
 %%% EXAMPLE OF USE:
 %%% within_error(out, "cutInterpHrLinearBC", "id", ["condition", "valence"], [], 1, 1);
-%%% or 
+%%% or
 %%% within_error(out, "cutInterpHrLinearBC", "id", "valence", [], 1, 1);
-%%% ----------------------------------------------------------------------------------------------------------------------------------------------
+%%% ========================================================================================================================
 
 
-%%% --------------------------------------------------------------------------------------------------
-%%% Set Defaults
-%%% --------------------------------------------------------------------------------------------------
+% Set Defaults ------------------------------------------------------------
 if ~exist("ci_lims", 'var') || isempty(ci_lims); ci_lims = [0.025, 0.975]; end
 if ~exist("want_plot", 'var') || isempty(want_plot); want_plot = 1; end
 if ~exist("errortype", 'var') || isempty(errortype); errortype = "ci"; end
+if ~exist("legendlabs", 'var') || isempty(errortype); errortype = "ci"; end
 
 idvar= pID;
-%%% --------------------------------------------------------------------------------------------------
-%%% Take the columns for conditions
-%%% --------------------------------------------------------------------------------------------------
+
+
+% find the columns for conditions -----------------------------------------
 series = set{:, series};
 pID = set{:,pID};
 conditions_tot = zeros(height(set), length(conditions));
 for ll = 1 : length(conditions)
-
     if iscell(set{:, conditions(ll)})
         conditions_tot(:, ll) = cell2mat(set{:, conditions(ll)});
     else
@@ -49,10 +47,7 @@ for ll = 1 : length(conditions)
     end
 end
 
-
-%%% --------------------------------------------------------------------------------------------------
-%%% Calculate the mean for each participant
-%%% --------------------------------------------------------------------------------------------------
+% averages by-participant -------------------------------------------------
 upID = unique(pID);
 ind_means = zeros(length(upID), length(series{1}));
 for pp = 1 : length(upID)
@@ -61,16 +56,10 @@ for pp = 1 : length(upID)
     ind_means(pp, :) = mean_pp;
 end
 
-
-%%% --------------------------------------------------------------------------------------------------
-%%% Calculate the grand-mean
-%%% --------------------------------------------------------------------------------------------------
+% grand-averag%e ------------------------------------------------------------
 grand_mean = nanmean(ind_means, 1);
 
-
-%%% --------------------------------------------------------------------------------------------------
-%%% Calculate the adjustment factor (grand mean - individual mean)
-%%% --------------------------------------------------------------------------------------------------
+% adjustment factor (grand average - individual average) ------------------
 adj_factor  = grand_mean - ind_means;
 tadj_factor = series;
 for ii = 1 : height(series)
@@ -79,16 +68,10 @@ for ii = 1 : height(series)
     tadj_factor{ii} = which_adj ;
 end
 
-
-%%% --------------------------------------------------------------------------------------------------
-%%% create adjusted values for each variable (this should give same the mean, but adjusted error)
-%%% --------------------------------------------------------------------------------------------------
+% adjusted values for each variable (same the mean, adjusted error) -------
 adjusted_series = cell2mat(series) + cell2mat(tadj_factor);
 
-
-%%% --------------------------------------------------------------------------------------------------
-%%% Means for each condition
-%%%--------------------------------------------------------------------------------------------------
+%% Means for each condition --------------------------------------------------------------------------------------------------
 
 % Extract possible combinations of conditions
 conds_cat = struct([]);
@@ -111,7 +94,9 @@ for pp = 1 : length(upID)
     for rr = 1 : height(conds_combinations)
         export = cell(1, width(conds_combinations) + 2);
 
-        export(1, 1) = upID(pp);
+        try export(1, 1) = upID(pp);
+        catch; export{1, 1} = upID(pp); end
+
         export(1, 2 : (width(conds_combinations)+1)) = table2cell(conds_combinations(rr, :));
 
         this_comb  = {this_pp(ismember(conditions_pp, conds_combinations{rr, :}, 'rows'), :)};
@@ -124,42 +109,47 @@ exp_ind_means = cell2table(exp_ind_means);
 exp_ind_means.Properties.VariableNames = [{'id'} conds_combinations.Properties.VariableNames {'mean_series'}];
 
 
-%%% --------------------------------------------------------------------------------------------------
-%%% Compute within errors
-%%% --------------------------------------------------------------------------------------------------
+
+%% Compute within errors
 fin = cell(height(conds_combinations), (5 + width(conds_combinations)));
+nconds =  height(conds_combinations);
+for rr = 1 : nconds
 
-for rr = 1 : height(conds_combinations)
-    
-    this_cond           = exp_ind_means(ismember(exp_ind_means(:, conds_combinations.Properties.VariableNames), conds_combinations(rr, :)), :);
-    this_cond_mean      = nanmean(this_cond.mean_series, 1);
+    this_cond        = exp_ind_means(ismember(exp_ind_means(:, conds_combinations.Properties.VariableNames), conds_combinations(rr, :)), :);
+    this_cond_mean   = nanmean(this_cond.mean_series, 1);
 
 
-    this_cond_se        = nanstd(this_cond.mean_series) / sqrt(height(this_cond));
-    % this_cond_se        = nanstd(this_cond.mean_series) / sqrt(height(exp_ind_means));
+    this_cond_se     = nanstd(this_cond.mean_series) / sqrt(height(this_cond));
+    this_cond_se     = this_cond_se * sqrt(nconds / (nconds - 1));
 
-    this_cond_se_low    = this_cond_mean - this_cond_se;
-    this_cond_se_up     = this_cond_mean + this_cond_se;
+    this_cond_se_low = this_cond_mean - this_cond_se;
+    this_cond_se_up  = this_cond_mean + this_cond_se;
 
-    ts                  = tinv([ci_lims(1)  ci_lims(2)], height(this_cond)-1);      % T-Score
-    this_cond_ci_low    = this_cond_mean + ts(1) * this_cond_se;
-    this_cond_ci_up     = this_cond_mean + ts(2) * this_cond_se;
+    ts               = tinv([ci_lims(1)  ci_lims(2)], height(this_cond)-1);      % T-Score
+    this_cond_ci_low = this_cond_mean + ts(1) * this_cond_se;
+    this_cond_ci_up  = this_cond_mean + ts(2) * this_cond_se;
 
-    fin(rr, :)          = table2cell([this_cond(1, 2:end-1) {this_cond_mean}, {this_cond_se_up}, {this_cond_se_low}, {this_cond_ci_up}, {this_cond_ci_low}]);
+    fin(rr, :)       = table2cell([this_cond(1, 2:end-1) {this_cond_mean}, {this_cond_se_up}, {this_cond_se_low}, {this_cond_ci_up}, {this_cond_ci_low}]);
 end
 fin = cell2table(fin);
 fin.Properties.VariableNames = [conds_combinations.Properties.VariableNames, {'mean_series'}, {'se_up'}, {'se_low'},{'ci_up'},{'ci_low'}];
 
 
-%%% --------------------------------------------------------------------------------------------------
-%%% Plot (if you want)
-%%% --------------------------------------------------------------------------------------------------
+
+%% Plot (if you want)
+
 if want_plot
-    try
-        plot_within_error(fin, errortype, colors)
-    catch
-        plot_within_error(fin, errortype)
+    if nargout == 0
+        plot_within_error(fin, errortype, colors, legendlabs);
+    else
+        try
+            f1  =  plot_within_error(fin, errortype, colors, legendlabs);
+        catch
+            f1  = plot_within_error(fin, errortype);
+        end
     end
+else
+    f1 =  [];
 end
 
 
