@@ -1,4 +1,4 @@
-function [out, f1] = tsglmm_plot_clust_par_means(data, version, verbose)
+function [out, f1] = tsglm_plot_clust_par_means(data, version, verbose)
 % plots group-level parameter means with SEs, Bayes factors (BF10),
 % and combined dual-axis view.
 

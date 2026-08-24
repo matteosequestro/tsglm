@@ -48,6 +48,7 @@ cut_short_clusters              = get_or_default(cfg, 'cut_short_clusters', 0);
 minlength                       = get_or_default(cfg, 'minlength', 0);
 wantplot_perm                   = get_or_default(cfg, 'wantplot_perm', 1);
 modname                         = get_or_default(cfg, 'modname', "");               % just for plotting purposes, e.g., if you need model comparison
+eeg_path                        = get_or_default(cfg, 'eeg_path', []);               % just for plotting purposes, e.g., if you need model comparison
 fieldtrip_cfg                   = get_or_default(cfg, 'fieldtrip_cfg', struct()); 
 
 % Take time
@@ -81,7 +82,7 @@ if nargin < 4
    
     % fit the model on everyone
     tic
-    modelout = tsglm_fit_all_subjs(data, formula, glm_likelihood, cfg);
+    modelout = tsglm_fit_all_subjs(data, formula, cfg);
     fprintf('fitting done in %.2fs!\n', round(toc,2));
     
     % Extract some variables from the model and add them modelout
